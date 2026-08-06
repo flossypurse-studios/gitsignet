@@ -1,5 +1,11 @@
 # gitsignet
 
+[![npm version](https://img.shields.io/npm/v/gitsignet?color=7ee787&label=npm)](https://www.npmjs.com/package/gitsignet)
+[![CI](https://github.com/flossypurse-studios/gitsignet/actions/workflows/ci.yml/badge.svg)](https://github.com/flossypurse-studios/gitsignet/actions)
+[![license: MIT](https://img.shields.io/badge/license-MIT-79c0ff)](LICENSE)
+
+**Website & docs: [gitsignet-site.vercel.app](https://gitsignet-site.vercel.app)** (custom domain `gitsignet.dev` coming soon)
+
 **Stop committing to work repos as your personal self (and vice-versa).**
 `gitsignet` is a git identity guard: it *blocks* a commit made under the wrong
 author, using rules keyed off the repo's **remote** — so the right identity is
