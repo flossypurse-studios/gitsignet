@@ -1,0 +1,42 @@
+{
+  "name": "gitsignet",
+  "version": "0.1.0",
+  "description": "Git identity guard — block commits made under the wrong author, with remote-aware rules and a zero-config doctor.",
+  "type": "module",
+  "bin": {
+    "gitsignet": "bin/gitsignet.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "git",
+    "identity",
+    "guard",
+    "pre-commit",
+    "hook",
+    "author",
+    "email",
+    "committer",
+    "cli"
+  ],
+  "author": "flossy-studio",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flossypurse-studios/gitsignet.git"
+  },
+  "homepage": "https://gitsignet.dev",
+  "bugs": {
+    "url": "https://github.com/flossypurse-studios/gitsignet/issues"
+  }
+}

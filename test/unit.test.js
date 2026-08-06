@@ -1,0 +1,91 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { parseRemote } from '../lib/remote.js';
+import { globToRegExp, matchRule } from '../lib/match.js';
+import { resolveIdentity } from '../lib/config.js';
+
+test('parseRemote: scp-like ssh', () => {
+  const r = parseRemote('git@github.com:acme/widgets.git');
+  assert.deepEqual(r, { host: 'github.com', owner: 'acme', repo: 'widgets', path: 'acme/widgets' });
+});
+
+test('parseRemote: https with .git', () => {
+  const r = parseRemote('https://github.com/acme/widgets.git');
+  assert.equal(r.host, 'github.com');
+  assert.equal(r.owner, 'acme');
+  assert.equal(r.repo, 'widgets');
+});
+
+test('parseRemote: https with userinfo and port', () => {
+  const r = parseRemote('https://user@bitbucket.org:443/team/repo.git');
+  assert.equal(r.host, 'bitbucket.org');
+  assert.equal(r.owner, 'team');
+});
+
+test('parseRemote: ssh scheme with port', () => {
+  const r = parseRemote('ssh://git@github.com:22/acme/widgets.git');
+  assert.equal(r.host, 'github.com');
+  assert.equal(r.owner, 'acme');
+});
+
+test('parseRemote: nested gitlab groups', () => {
+  const r = parseRemote('git@gitlab.com:group/subgroup/repo.git');
+  assert.equal(r.owner, 'group');
+  assert.equal(r.repo, 'repo');
+  assert.equal(r.path, 'group/subgroup/repo');
+});
+
+test('parseRemote: junk returns null', () => {
+  assert.equal(parseRemote(''), null);
+  assert.equal(parseRemote(null), null);
+  assert.equal(parseRemote('not a url'), null);
+});
+
+test('globToRegExp: single star stops at slash', () => {
+  const re = globToRegExp('github.com/acme-*');
+  assert.ok(re.test('github.com/acme-corp'));
+  assert.ok(!re.test('github.com/other'));
+  assert.ok(!re.test('github.com/acme-corp/extra'));
+});
+
+test('globToRegExp: double star crosses slash', () => {
+  const re = globToRegExp('github.com/**');
+  assert.ok(re.test('github.com/acme/widgets'));
+});
+
+test('matchRule: matches org-level rule via host/owner', () => {
+  const remote = parseRemote('git@github.com:acme-corp/widgets.git');
+  const rule = matchRule([{ remote: 'github.com/acme-*', profile: 'work' }], remote);
+  assert.equal(rule.profile, 'work');
+});
+
+test('matchRule: first match wins', () => {
+  const remote = parseRemote('git@github.com:acme/widgets.git');
+  const rules = [
+    { remote: 'github.com/acme/widgets', profile: 'specific' },
+    { remote: 'github.com/acme', profile: 'org' },
+  ];
+  assert.equal(matchRule(rules, remote).profile, 'specific');
+});
+
+test('matchRule: no match returns null', () => {
+  const remote = parseRemote('git@github.com:someone/thing.git');
+  assert.equal(matchRule([{ remote: 'gitlab.com/*', profile: 'x' }], remote), null);
+});
+
+test('resolveIdentity: inline overrides profile', () => {
+  const cfg = { profiles: { work: { name: 'W', email: 'w@x' } } };
+  assert.deepEqual(resolveIdentity({ name: 'Inline', email: 'i@x' }, cfg), {
+    name: 'Inline',
+    email: 'i@x',
+  });
+});
+
+test('resolveIdentity: dereferences profile', () => {
+  const cfg = { profiles: { work: { name: 'W', email: 'w@x' } } };
+  assert.deepEqual(resolveIdentity({ profile: 'work' }, cfg), { name: 'W', email: 'w@x' });
+});
+
+test('resolveIdentity: missing profile returns null', () => {
+  assert.equal(resolveIdentity({ profile: 'nope' }, { profiles: {} }), null);
+});
