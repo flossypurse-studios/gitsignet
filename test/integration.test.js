@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -195,6 +195,33 @@ test('install then uninstall a pre-commit hook', () => {
     assert.equal(u.code, 0);
     assert.ok(!existsSync(hook)); // was otherwise empty → deleted
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('installed hook fails open with a warning when gitsignet is absent', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Work Me',
+    email: 'me@acme.com',
+    config: WORK_CONFIG,
+  });
+  const hook = join(dir, '.git', 'hooks', 'pre-commit');
+  const emptyBin = mkdtempSync(join(tmpdir(), 'gitsignet-emptybin-'));
+  try {
+    run(['install'], dir);
+    // Run the generated hook with a PATH that contains neither gitsignet nor npx,
+    // simulating a clone where the tool was never installed. It must exit 0
+    // (commit allowed) and warn on stderr rather than hard-blocking the commit.
+    const res = spawnSync('/bin/sh', [hook], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { PATH: emptyBin },
+    });
+    assert.equal(res.status, 0, 'commit must not be hard-blocked when tool is absent');
+    assert.match(res.stderr, /not installed/);
+  } finally {
+    rmSync(emptyBin, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
   }
 });

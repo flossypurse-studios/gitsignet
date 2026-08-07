@@ -105,7 +105,9 @@ have to think about it again.
 
 The installed hook calls `gitsignet` if it's on `PATH`, else falls back to
 `npx --no-install gitsignet`, so it works whether the tool is installed globally
-or as a dev dependency.
+or as a dev dependency. If gitsignet can't be found at all (for example on a
+fresh clone where nobody installed it), the hook **fails open**: it prints a
+one-line notice and lets the commit proceed rather than hard-blocking it.
 
 ## Exit codes
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2
+
+- Pre-commit hook now **fails open with a warning** when gitsignet is not
+  installed (e.g. a fresh clone where nobody ran `npm i -g gitsignet`).
+  Previously the `npx --no-install` fallback could error noisily and hard-block
+  the commit with a confusing npm message. The hook now probes for a usable
+  gitsignet first and, if none is found, prints a one-line notice to stderr and
+  lets the commit proceed — a missing tool no longer blocks unrelated
+  contributors.
+
 ## 0.1.1
 
 - `fix [--global]` — new command that closes the loop: when the identity is
