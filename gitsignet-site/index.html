@@ -105,7 +105,10 @@
   <span class="c-muted">rule    :</span> github.com/acme-*
   <span class="c-muted">expected:</span> <span class="c-green">Work Me &lt;me@acme.com&gt;</span>
   <span class="c-muted">current :</span> <span class="c-red">Personal Me &lt;me@personal.dev&gt;</span>
-  <span class="c-muted">fix     :</span> git config user.email "me@acme.com"</pre>
+  <span class="c-muted">fix     :</span> run `gitsignet fix` to apply the expected identity
+<span class="c-muted">$</span> <span class="c-cmd">gitsignet fix</span>
+<span class="c-green">✓ applied the expected identity (local git config):</span>
+    user.email → me@acme.com</pre>
     </div>
   </div>
 </header>
@@ -179,6 +182,7 @@ gitsignet install</pre>
     <tr><th>Command</th><th>What it does</th></tr>
     <tr><td><code>gitsignet doctor</code></td><td class="desc">Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Never fails a commit.</td></tr>
     <tr><td><code>gitsignet check</code></td><td class="desc">The guard. Exits non-zero on a mismatch or strict violation. <code>--hook</code> stays quiet on success.</td></tr>
+    <tr><td><code>gitsignet fix</code></td><td class="desc">Apply the identity the matching rule expects (sets <code>user.name</code>/<code>user.email</code>). <code>--global</code> writes global config. Refuses when no rule matches.</td></tr>
     <tr><td><code>gitsignet install</code></td><td class="desc">Add the guard to this repo's <code>pre-commit</code> hook (honours <code>core.hooksPath</code>). Idempotent; preserves an existing hook.</td></tr>
     <tr><td><code>gitsignet uninstall</code></td><td class="desc">Remove the guard from the <code>pre-commit</code> hook.</td></tr>
     <tr><td><code>gitsignet init</code></td><td class="desc">Write a sample config. <code>--global</code> writes it to your XDG config dir.</td></tr>

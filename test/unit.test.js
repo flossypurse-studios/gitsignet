@@ -89,3 +89,27 @@ test('resolveIdentity: dereferences profile', () => {
 test('resolveIdentity: missing profile returns null', () => {
   assert.equal(resolveIdentity({ profile: 'nope' }, { profiles: {} }), null);
 });
+
+test('setConfig: writes local git config and returns true', async () => {
+  const { setConfig } = await import('../lib/git.js');
+  const { execFileSync } = await import('node:child_process');
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'gitsignet-unit-'));
+  const cwd = process.cwd();
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    process.chdir(dir);
+    const ok = setConfig('user.name', 'Unit Tester');
+    assert.equal(ok, true);
+    const got = execFileSync('git', ['config', '--local', '--get', 'user.name'], {
+      cwd: dir,
+      encoding: 'utf8',
+    }).trim();
+    assert.equal(got, 'Unit Tester');
+  } finally {
+    process.chdir(cwd);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

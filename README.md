@@ -18,8 +18,11 @@ $ git commit -m "wip"
   rule    : github.com/acme-*
   expected: Work Me <me@acme.com>
   current : Personal Me <me@personal.dev>
-  fix    : git config user.name "…" && git config user.email "…"
+  fix     : run `gitsignet fix` to apply the expected identity
 ```
+
+Then run `gitsignet fix` and the right `user.name`/`user.email` for that remote
+are applied for you — no retyping, no copy-paste.
 
 ## Why
 
@@ -95,6 +98,7 @@ have to think about it again.
 | --- | --- |
 | `gitsignet doctor` | Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's ok. Never fails a commit. |
 | `gitsignet check [--hook]` | The guard. Exit non-zero on a mismatch / strict violation. `--hook` stays quiet on success. |
+| `gitsignet fix [--global]` | Apply the identity the matching rule expects (sets `user.name`/`user.email`). `--global` writes global config. Refuses when no rule matches. |
 | `gitsignet install` | Add the `gitsignet` guard to this repo's `pre-commit` hook (honours `core.hooksPath`). Idempotent; preserves an existing hook. |
 | `gitsignet uninstall` | Remove the guard from the `pre-commit` hook. |
 | `gitsignet init [--global]` | Write a sample config. |

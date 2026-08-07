@@ -278,3 +278,83 @@ test('a real commit is blocked by the installed hook', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- fix ---------------------------------------------------------------
+
+function gitConfig(dir, key) {
+  try {
+    return sh('git', ['config', '--local', '--get', key], dir).trim();
+  } catch {
+    return '';
+  }
+}
+
+test('fix: sets local config when identity mismatches', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Wrong Name',
+    email: 'wrong@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['fix'], dir);
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /applied the expected identity/);
+    assert.equal(gitConfig(dir, 'user.name'), 'Work Me');
+    assert.equal(gitConfig(dir, 'user.email'), 'me@acme.com');
+    // guard now passes
+    assert.equal(run(['check'], dir).code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('fix: sets local config when git has no identity', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['fix'], dir);
+    assert.equal(r.code, 0);
+    assert.equal(gitConfig(dir, 'user.name'), 'Work Me');
+    assert.equal(gitConfig(dir, 'user.email'), 'me@acme.com');
+    assert.equal(run(['check'], dir).code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('fix: idempotent no-op when identity already matches', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Work Me',
+    email: 'me@acme.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['fix'], dir);
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /already matches/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('fix: exit 1 and refusal when no rule matches the remote', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:other-org/thing.git',
+    name: 'Wrong Name',
+    email: 'wrong@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['fix'], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /no rule with an expected identity matched/);
+    // identity untouched
+    assert.equal(gitConfig(dir, 'user.name'), 'Wrong Name');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
