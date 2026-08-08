@@ -180,7 +180,7 @@ gitsignet install</pre>
   <h2>Commands</h2>
   <table>
     <tr><th>Command</th><th>What it does</th></tr>
-    <tr><td><code>gitsignet doctor</code></td><td class="desc">Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Never fails a commit.</td></tr>
+    <tr><td><code>gitsignet doctor</code></td><td class="desc">Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Warns when a later rule is shadowed by an earlier broad one. Never fails a commit.</td></tr>
     <tr><td><code>gitsignet check</code></td><td class="desc">The guard. Exits non-zero on a mismatch or strict violation. <code>--hook</code> stays quiet on success.</td></tr>
     <tr><td><code>gitsignet fix</code></td><td class="desc">Apply the identity the matching rule expects (sets <code>user.name</code>/<code>user.email</code>). <code>--global</code> writes global config. Refuses when no rule matches.</td></tr>
     <tr><td><code>gitsignet install</code></td><td class="desc">Add the guard to this repo's <code>pre-commit</code> hook (honours <code>core.hooksPath</code>). Idempotent; preserves an existing hook.</td></tr>
