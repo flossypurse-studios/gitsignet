@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+- `doctor` now **warns about shadowed rules**. Because rules match first-wins,
+  a broad rule (e.g. `github.com/*`) placed before a more specific one silently
+  prevents the specific rule from ever firing. `doctor` now detects every later
+  rule that also matches the current remote, lists them, and suggests reordering
+  (most specific first). Purely diagnostic — it never changes the resolved
+  identity or blocks a commit.
+
 ## 0.1.2
 
 - Pre-commit hook now **fails open with a warning** when gitsignet is not

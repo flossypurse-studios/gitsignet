@@ -1,6 +1,6 @@
 {
   "name": "gitsignet",
-  "version": "0.1.3-dev",
+  "version": "0.1.3",
   "description": "Git identity guard — block commits made under the wrong author, with remote-aware rules and a zero-config doctor.",
   "type": "module",
   "bin": {

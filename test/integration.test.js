@@ -172,6 +172,29 @@ test('doctor: exit 1 and mismatch report on wrong identity', () => {
   }
 });
 
+test('doctor: warns about shadowed rules (broad rule before specific)', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme/widgets.git',
+    name: 'Work Me',
+    email: 'me@acme.com',
+    config: {
+      strict: false,
+      profiles: { work: { name: 'Work Me', email: 'me@acme.com' } },
+      rules: [
+        { remote: 'github.com/*', profile: 'work' },
+        { remote: 'github.com/acme/widgets', profile: 'work' },
+      ],
+    },
+  });
+  try {
+    const r = run(['doctor'], dir);
+    assert.match(r.stdout, /shadowed/);
+    assert.match(r.stdout, /github\.com\/acme\/widgets/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('install then uninstall a pre-commit hook', () => {
   const dir = setupRepo({
     remote: 'git@github.com:acme-corp/widgets.git',

@@ -96,7 +96,7 @@ have to think about it again.
 
 | Command | What it does |
 | --- | --- |
-| `gitsignet doctor` | Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's ok. Never fails a commit. |
+| `gitsignet doctor` | Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's ok. Warns when a later rule is **shadowed** by an earlier broad one. Never fails a commit. |
 | `gitsignet check [--hook]` | The guard. Exit non-zero on a mismatch / strict violation. `--hook` stays quiet on success. |
 | `gitsignet fix [--global]` | Apply the identity the matching rule expects (sets `user.name`/`user.email`). `--global` writes global config. Refuses when no rule matches. |
 | `gitsignet install` | Add the `gitsignet` guard to this repo's `pre-commit` hook (honours `core.hooksPath`). Idempotent; preserves an existing hook. |

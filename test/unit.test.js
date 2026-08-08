@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRemote } from '../lib/remote.js';
-import { globToRegExp, matchRule } from '../lib/match.js';
+import { globToRegExp, matchRule, matchAll } from '../lib/match.js';
 import { resolveIdentity } from '../lib/config.js';
 
 test('parseRemote: scp-like ssh', () => {
@@ -71,6 +71,28 @@ test('matchRule: first match wins', () => {
 test('matchRule: no match returns null', () => {
   const remote = parseRemote('git@github.com:someone/thing.git');
   assert.equal(matchRule([{ remote: 'gitlab.com/*', profile: 'x' }], remote), null);
+});
+
+test('matchAll: returns all matching rules winner-first, skipping non-matches', () => {
+  const remote = parseRemote('git@github.com:acme/widgets.git');
+  const rules = [
+    { remote: 'github.com/*', profile: 'broad' },
+    { remote: 'gitlab.com/*', profile: 'other' },
+    { remote: 'github.com/acme/widgets', profile: 'specific' },
+  ];
+  const matches = matchAll(rules, remote);
+  assert.equal(matches.length, 2);
+  assert.equal(matches[0].rule.profile, 'broad');
+  assert.equal(matches[0].index, 0);
+  assert.equal(matches[1].rule.profile, 'specific');
+  assert.equal(matches[1].index, 2);
+});
+
+test('matchAll: single match returns length 1', () => {
+  const remote = parseRemote('git@github.com:acme/widgets.git');
+  const matches = matchAll([{ remote: 'github.com/acme/*', profile: 'work' }], remote);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].rule.profile, 'work');
 });
 
 test('resolveIdentity: inline overrides profile', () => {
