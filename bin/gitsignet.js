@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { doctor, check, fix, install, uninstall, init } from '../lib/commands.js';
 
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 
 const HELP = `gitsignet — git identity guard
 

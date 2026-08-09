@@ -4,7 +4,7 @@
 [![CI](https://github.com/flossypurse-studios/gitsignet/actions/workflows/ci.yml/badge.svg)](https://github.com/flossypurse-studios/gitsignet/actions)
 [![license: MIT](https://img.shields.io/badge/license-MIT-79c0ff)](LICENSE)
 
-**Website & docs: [gitsignet-site.vercel.app](https://gitsignet-site.vercel.app)** (custom domain `gitsignet.dev` coming soon)
+**Website & docs: [gitsignet.dev](https://gitsignet.dev)**
 
 **Stop committing to work repos as your personal self (and vice-versa).**
 `gitsignet` is a git identity guard: it *blocks* a commit made under the wrong
@@ -89,6 +89,10 @@ have to think about it again.
 - **`remote`** — a glob matched against `host/owner/repo`, `host/owner`, and
   `host`. `*` matches within one path segment; `**` crosses `/`. So
   `github.com/acme-*` matches a whole org, `github.com/acme/widgets` a single repo.
+  Use the literal `"(none)"` to match a repo that has **no `origin` remote** at
+  all (a local-only repo). This lets you guard the identity of remoteless repos —
+  for example `{ "remote": "(none)", "profile": "personal" }` — which no
+  host/owner glob can ever match.
 - **`strict`** — when `true`, a commit to a remote that matches **no** rule is
   blocked. Off by default (unmatched remotes are allowed).
 
@@ -108,6 +112,21 @@ The installed hook calls `gitsignet` if it's on `PATH`, else falls back to
 or as a dev dependency. If gitsignet can't be found at all (for example on a
 fresh clone where nobody installed it), the hook **fails open**: it prints a
 one-line notice and lets the commit proceed rather than hard-blocking it.
+
+> **⚠ The hook needs a real install — `npx gitsignet ...` is not enough.**
+> The pre-commit hook resolves the binary with `command -v gitsignet` and
+> `npx --no-install gitsignet`; neither can see packages that only live in the
+> transient `npx` download cache. If you only ever run gitsignet via
+> `npx gitsignet`, the hook will **fall open** (commits pass unchecked). To
+> actually arm the guard, install a resolvable binary:
+>
+> ```
+> npm i -g gitsignet     # global — works in every repo
+> npm i -D gitsignet     # per-project dev dependency
+> ```
+>
+> `gitsignet install` now detects this and prints a loud warning if the hook it
+> just wrote cannot resolve gitsignet.
 
 ## Exit codes
 

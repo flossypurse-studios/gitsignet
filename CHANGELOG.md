@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.4
+
+- **Guard repos with no remote** (#1). A rule whose `remote` is the literal
+  `"(none)"` now matches a repo that has no `origin` remote at all. Previously a
+  local-only repo could not be guarded because every rule keys off a
+  host/owner/repo glob that a remoteless repo can never satisfy. `check`,
+  `doctor` and `fix` all honour `"(none)"` rules.
+- **`install` warns when the hook cannot resolve gitsignet** (#2). If you only
+  ever ran `npx gitsignet ...`, the tool lives in the transient npx download
+  cache, which the pre-commit hook's `command -v` / `npx --no-install` probes
+  cannot see — so the guard silently falls open. `install` now runs the same
+  probes and, when neither finds a binary, prints a loud stderr warning telling
+  you to `npm i -g gitsignet` (or add it as a dev dependency).
+
 ## 0.1.3
 
 - `doctor` now **warns about shadowed rules**. Because rules match first-wins,

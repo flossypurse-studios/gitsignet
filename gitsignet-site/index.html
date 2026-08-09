@@ -173,7 +173,7 @@ gitsignet install</pre>
     { <span class="c-key">"remote"</span>: <span class="c-str">"gitlab.com/**"</span>,        <span class="c-key">"name"</span>: <span class="c-str">"Personal Me"</span>, <span class="c-key">"email"</span>: <span class="c-str">"me@personal.dev"</span> }
   ]
 }</pre>
-  <p class="muted"><code>remote</code> is a glob matched against <code>host/owner/repo</code>, <code>host/owner</code>, and <code>host</code>. <code>*</code> matches within one path segment; <code>**</code> crosses <code>/</code>. With <code>strict: true</code>, a commit to any remote that matches no rule is blocked.</p>
+  <p class="muted"><code>remote</code> is a glob matched against <code>host/owner/repo</code>, <code>host/owner</code>, and <code>host</code>. <code>*</code> matches within one path segment; <code>**</code> crosses <code>/</code>. Use the literal <code>"(none)"</code> to match a local-only repo that has <strong>no origin remote</strong>. With <code>strict: true</code>, a commit to any remote that matches no rule is blocked.</p>
 </section>
 
 <section id="commands">
@@ -187,7 +187,7 @@ gitsignet install</pre>
     <tr><td><code>gitsignet uninstall</code></td><td class="desc">Remove the guard from the <code>pre-commit</code> hook.</td></tr>
     <tr><td><code>gitsignet init</code></td><td class="desc">Write a sample config. <code>--global</code> writes it to your XDG config dir.</td></tr>
   </table>
-  <p class="muted" style="margin-top:16px">The installed hook calls <code>gitsignet</code> if it's on <code>PATH</code>, else falls back to <code>npx --no-install gitsignet</code> — so it works whether the tool is installed globally or as a dev dependency.</p>
+  <p class="muted" style="margin-top:16px">The installed hook calls <code>gitsignet</code> if it's on <code>PATH</code>, else falls back to <code>npx --no-install gitsignet</code> — so it works whether the tool is installed globally or as a dev dependency. <strong>Running only <code>npx gitsignet</code> is not enough to arm the hook:</strong> neither probe can see the transient npx cache, so the guard falls open. Install a resolvable binary (<code>npm i -g gitsignet</code> or <code>npm i -D gitsignet</code>); <code>gitsignet install</code> warns loudly when it can't find one.</p>
 </section>
 
 </div>

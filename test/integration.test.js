@@ -15,17 +15,13 @@ function sh(cmd, args, cwd) {
 
 // Run the CLI, returning { code, stdout, stderr }. Never throws on non-zero exit.
 function run(args, cwd, env = {}) {
-  try {
-    const stdout = execFileSync('node', [BIN, ...args], {
-      cwd,
-      encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return { code: 0, stdout, stderr: '' };
-  } catch (e) {
-    return { code: e.status ?? 1, stdout: e.stdout || '', stderr: e.stderr || '' };
-  }
+  const r = spawnSync('node', [BIN, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, NO_COLOR: '1', ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  return { code: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
 
 function setupRepo({ remote, name, email, config } = {}) {
@@ -404,6 +400,102 @@ test('fix: exit 1 and refusal when no rule matches the remote', () => {
     assert.match(r.stderr, /no rule with an expected identity matched/);
     // identity untouched
     assert.equal(gitConfig(dir, 'user.name'), 'Wrong Name');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- issue #1: "(none)" rule guards repos with no origin remote -------------
+const NONE_CONFIG = {
+  strict: false,
+  profiles: { me: { name: 'Right Person', email: 'right@example.com' } },
+  rules: [{ remote: '(none)', profile: 'me' }],
+};
+
+test('check: "(none)" rule blocks wrong identity when repo has no remote', () => {
+  const dir = setupRepo({
+    name: 'Wrong Person',
+    email: 'wrong@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /wrong identity/);
+    assert.match(r.stderr, /no origin remote/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: "(none)" rule passes matching identity when repo has no remote', () => {
+  const dir = setupRepo({
+    name: 'Right Person',
+    email: 'right@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('doctor: "(none)" rule reports mismatch for a remoteless repo', () => {
+  const dir = setupRepo({
+    name: 'Wrong Person',
+    email: 'wrong@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['doctor'], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stdout, /does NOT match/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('fix: "(none)" rule applies expected identity to a remoteless repo', () => {
+  const dir = setupRepo({
+    name: 'Wrong Person',
+    email: 'wrong@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['fix'], dir);
+    assert.equal(r.code, 0);
+    assert.equal(gitConfig(dir, 'user.name'), 'Right Person');
+    assert.equal(gitConfig(dir, 'user.email'), 'right@example.com');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('no-remote without a "(none)" rule stays inert in non-strict mode', () => {
+  const dir = setupRepo({
+    name: 'Wrong Person',
+    email: 'wrong@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- issue #2: install warns when the hook cannot resolve gitsignet ---------
+test('install: warns loudly when gitsignet is not resolvable by the hook', () => {
+  const dir = setupRepo({ name: 'A', email: 'a@b.c', config: NONE_CONFIG });
+  try {
+    // In a fresh temp repo gitsignet is not resolvable by the hook → warning fires.
+    const r = run(['install'], dir);
+    assert.equal(r.code, 0);
+    assert.match(r.stderr, /FALL OPEN|not installed where the hook can find it/);
+    assert.match(r.stderr, /npm i -g gitsignet/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
