@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6
+
+- **`--version` reported the wrong version** (#5). `bin/gitsignet.js` carried a
+  hardcoded `const VERSION = '0.1.4'`, so the published 0.1.5 CLI printed
+  `0.1.4`. The version is now read from `package.json`, so it can no longer
+  drift on a release, and a regression test asserts `--version` and `-v` both
+  match `package.json`.
+
+## 0.1.5
+
+- Packaging only: published via npm Trusted Publishing (OIDC), so releases now
+  carry a provenance attestation binding the tarball to its workflow run and
+  commit. No functional change.
+
 ## 0.1.4
 
 - **Guard repos with no remote** (#1). A rule whose `remote` is the literal

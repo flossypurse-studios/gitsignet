@@ -1,7 +1,10 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { doctor, check, fix, install, uninstall, init } from '../lib/commands.js';
 
-const VERSION = '0.1.4';
+// Read the version from package.json rather than hardcoding it here: a literal
+// drifts from the real version on every release (0.1.5 shipped reporting 0.1.4).
+const VERSION = createRequire(import.meta.url)('../package.json').version;
 
 const HELP = `gitsignet — git identity guard
 

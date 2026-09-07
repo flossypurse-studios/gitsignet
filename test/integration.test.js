@@ -500,3 +500,21 @@ test('install: warns loudly when gitsignet is not resolvable by the hook', () =>
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- regression: --version must equal package.json, not a hardcoded literal --
+// v0.1.5 shipped with `const VERSION = '0.1.4'` in bin/gitsignet.js, so the
+// published CLI under-reported its own version. The version is now read from
+// package.json; this test fails if anyone reintroduces a literal that drifts.
+test('--version reports the real package.json version', () => {
+  const pkg = JSON.parse(readFileSync(join(HERE, '..', 'package.json'), 'utf8'));
+  const dir = setupRepo({ name: 'A', email: 'a@b.c' });
+  try {
+    for (const flag of ['--version', '-v']) {
+      const r = run([flag], dir);
+      assert.equal(r.code, 0, `${flag} should exit 0`);
+      assert.equal(r.stdout.trim(), pkg.version, `${flag} must print ${pkg.version}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
