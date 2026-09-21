@@ -518,3 +518,172 @@ test('--version reports the real package.json version', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- cold review (issue #6): the identity check itself is untested ---------
+//
+// These tests force GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL explicitly on every
+// `run()` call so the assertion is deterministic regardless of any ambient
+// GIT_AUTHOR_*/GIT_COMMITTER_* env vars in the host environment (see
+// currentIdentity() in lib/git.js, which prefers env vars over git config).
+
+test('check: mismatch when name matches but email does not (remote path)', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Work Me',
+    email: 'wrong@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['check'], dir, { GIT_AUTHOR_NAME: 'Work Me', GIT_AUTHOR_EMAIL: 'wrong@example.com' });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /commit blocked/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: mismatch when email matches but name does not (remote path)', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Wrong Name',
+    email: 'me@acme.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['check'], dir, { GIT_AUTHOR_NAME: 'Wrong Name', GIT_AUTHOR_EMAIL: 'me@acme.com' });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /commit blocked/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: mismatch when name matches but email does not (no-remote "(none)" path)', () => {
+  const dir = setupRepo({
+    name: 'Right Person',
+    email: 'wrong@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['check', '--hook'], dir, { GIT_AUTHOR_NAME: 'Right Person', GIT_AUTHOR_EMAIL: 'wrong@example.com' });
+    assert.equal(r.code, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: mismatch when email matches but name does not (no-remote "(none)" path)', () => {
+  const dir = setupRepo({
+    name: 'Wrong Person',
+    email: 'right@example.com',
+    config: NONE_CONFIG,
+  });
+  try {
+    const r = run(['check', '--hook'], dir, { GIT_AUTHOR_NAME: 'Wrong Person', GIT_AUTHOR_EMAIL: 'right@example.com' });
+    assert.equal(r.code, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('remote rule matching is case-insensitive on the host', () => {
+  // Strict mode makes a rule-miss observable (exit 1) instead of silently
+  // allowed, so this test actually distinguishes "matched" from "not matched".
+  const dir = setupRepo({
+    remote: 'git@MyGit.Company.com:owner/repo.git',
+    name: 'Work Me',
+    email: 'me@acme.com',
+    config: {
+      strict: true,
+      profiles: { work: { name: 'Work Me', email: 'me@acme.com' } },
+      rules: [{ remote: 'mygit.company.com/owner/*', profile: 'work' }],
+    },
+  });
+  try {
+    const r = run(['check'], dir, { GIT_AUTHOR_NAME: 'Work Me', GIT_AUTHOR_EMAIL: 'me@acme.com' });
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: strict mode blocks a remoteless repo with no "(none)" rule', () => {
+  const dir = setupRepo({
+    name: 'Whoever',
+    email: 'who@ever.com',
+    config: { ...WORK_CONFIG, strict: true },
+  });
+  try {
+    const r = run(['check'], dir, { GIT_AUTHOR_NAME: 'Whoever', GIT_AUTHOR_EMAIL: 'who@ever.com' });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /strict/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check: exit 1 when git has no identity at all', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    config: WORK_CONFIG,
+  });
+  try {
+    // Isolate from any global/system git config on the host (which may set
+    // a real user.name/email) so this genuinely exercises "no identity".
+    const r = run(['check'], dir, {
+      GIT_AUTHOR_NAME: '',
+      GIT_AUTHOR_EMAIL: '',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_SYSTEM: '/dev/null',
+    });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /no user\.name/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('"(none)" rule requires an exact match, not a substring', () => {
+  const dir = setupRepo({
+    name: 'Right Person',
+    email: 'right@example.com',
+    config: {
+      strict: false,
+      profiles: { me: { name: 'Right Person', email: 'right@example.com' } },
+      // This rule's remote pattern merely *contains* "none" — it must NOT be
+      // treated as the no-remote catch-all, even though the identity here
+      // would satisfy it if it were wrongly matched.
+      rules: [{ remote: 'nonematch', profile: 'me' }],
+    },
+  });
+  try {
+    // No real "(none)" rule and no origin remote → status must be "no-remote"
+    // (inert, allowed), NOT "ok" via a wrongly-matched "nonematch" rule.
+    const r = run(['doctor'], dir, { GIT_AUTHOR_NAME: 'Right Person', GIT_AUTHOR_EMAIL: 'right@example.com' });
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /no origin remote/);
+    assert.doesNotMatch(r.stdout, /matches the rule/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('email comparison is case-sensitive', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Work Me',
+    email: 'User@Company.com',
+    config: {
+      strict: false,
+      profiles: { work: { name: 'Work Me', email: 'user@company.com' } },
+      rules: [{ remote: 'github.com/acme-*', profile: 'work' }],
+    },
+  });
+  try {
+    const r = run(['check'], dir, { GIT_AUTHOR_NAME: 'Work Me', GIT_AUTHOR_EMAIL: 'User@Company.com' });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /commit blocked/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
