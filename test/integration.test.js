@@ -687,3 +687,109 @@ test('email comparison is case-sensitive', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- A guard that cannot evaluate must block, never pass -------------------
+
+// A PATH holding node and a stand-in `git` script (or no git at all).
+function fakePath({ gitScript = null } = {}) {
+  const bin = mkdtempSync(join(tmpdir(), 'gitsignet-path-'));
+  execFileSync('ln', ['-s', process.execPath, join(bin, 'node')]);
+  if (gitScript) {
+    writeFileSync(join(bin, 'git'), `#!/bin/sh\n${gitScript}\n`, { mode: 0o755 });
+  }
+  return bin;
+}
+
+test('check --hook: blocks when git cannot run at all', () => {
+  const dir = setupRepo({ config: WORK_CONFIG });
+  const bin = fakePath();
+  try {
+    const r = run(['check', '--hook'], dir, { PATH: bin });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /could not verify the commit identity/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('check --hook: blocks when git fails for a reason other than "not a repo"', () => {
+  const dir = setupRepo({ config: WORK_CONFIG });
+  const bin = fakePath({ gitScript: 'echo "fatal: detected dubious ownership" >&2; exit 128' });
+  try {
+    const r = run(['check', '--hook'], dir, { PATH: bin });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /dubious ownership/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('check --hook: blocks when reading the remote fails', () => {
+  const dir = setupRepo({ config: WORK_CONFIG });
+  // rev-parse works; every `git config` call fails with an unexpected code.
+  const bin = fakePath({
+    gitScript: `case "$1" in
+  rev-parse) [ "$2" = "--is-inside-work-tree" ] && echo true || echo "${dir}"; exit 0 ;;
+  *) echo "fatal: bad config line 1" >&2; exit 3 ;;
+esac`,
+  });
+  try {
+    const r = run(['check', '--hook'], dir, { PATH: bin });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /bad config line/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('check --hook: still a no-op outside a git repository', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gitsignet-norepo-'));
+  try {
+    const r = run(['check', '--hook'], dir, { GIT_CEILING_DIRECTORIES: dirname(dir) });
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('malformed .gitsignet.json: blocks with one clean line, no stack trace', () => {
+  const dir = setupRepo({ remote: 'git@github.com:acme-corp/widgets.git', name: 'A', email: 'a@b.c' });
+  writeFileSync(join(dir, '.gitsignet.json'), '{ not json');
+  try {
+    const hook = run(['check', '--hook'], dir);
+    assert.equal(hook.code, 1);
+    assert.match(hook.stderr, /invalid JSON/);
+    assert.doesNotMatch(hook.stderr, /^\s+at /m);
+    const doc = run(['doctor'], dir);
+    assert.equal(doc.code, 1);
+    assert.match(doc.stderr, /^gitsignet: invalid JSON/m);
+    assert.doesNotMatch(doc.stderr, /^\s+at /m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check --json / doctor --json: machine-readable result', () => {
+  const dir = setupRepo({
+    remote: 'git@github.com:acme-corp/widgets.git',
+    name: 'Someone Else',
+    email: 'else@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    const r = run(['check', '--json'], dir);
+    assert.equal(r.code, 1);
+    const j = JSON.parse(r.stdout);
+    assert.equal(j.status, 'mismatch');
+    assert.equal(j.ok, false);
+    assert.equal(j.expected.email, 'me@acme.com');
+    assert.equal(j.identity.email, 'else@example.com');
+    const d = JSON.parse(run(['doctor', '--json'], dir).stdout);
+    assert.equal(d.status, 'mismatch');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **`check` fails closed when it cannot verify.** Previously any git error
+  (git missing, killed, or refusing the repository) was read as "not a git
+  repository", and `check --hook` exited `0` — the commit went through
+  unchecked. A failed read of the remote was likewise treated as "no remote".
+  Now only git's own "not a git repository" answer counts as outside a repo;
+  every other failure blocks the commit with the reason.
+- **No more stack traces for expected failures.** A malformed `.gitsignet.json`
+  now prints one `gitsignet: …` line and exits `1`. Set `GITSIGNET_DEBUG=1` for
+  the stack.
+- **`--json`** on `check` and `doctor` prints the evaluation as JSON.
+
 ## 0.1.6
 
 - **`--version` reported the wrong version** (#5). `bin/gitsignet.js` carried a

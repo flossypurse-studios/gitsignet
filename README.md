@@ -100,8 +100,8 @@ have to think about it again.
 
 | Command | What it does |
 | --- | --- |
-| `gitsignet doctor` | Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's ok. Warns when a later rule is **shadowed** by an earlier broad one. Never fails a commit. |
-| `gitsignet check [--hook]` | The guard. Exit non-zero on a mismatch / strict violation. `--hook` stays quiet on success. |
+| `gitsignet doctor [--json]` | Explain the identity you're about to commit as, the parsed remote, the matching rule, and whether it's ok. Warns when a later rule is **shadowed** by an earlier broad one. Never fails a commit. |
+| `gitsignet check [--hook] [--json]` | The guard. Exit non-zero on a mismatch / strict violation, **or when the identity could not be verified** (git missing or failing, unreadable config). `--hook` stays quiet on success. `--json` prints the result as JSON. |
 | `gitsignet fix [--global]` | Apply the identity the matching rule expects (sets `user.name`/`user.email`). `--global` writes global config. Refuses when no rule matches. |
 | `gitsignet install` | Add the `gitsignet` guard to this repo's `pre-commit` hook (honours `core.hooksPath`). Idempotent; preserves an existing hook. |
 | `gitsignet uninstall` | Remove the guard from the `pre-commit` hook. |
@@ -132,6 +132,12 @@ one-line notice and lets the commit proceed rather than hard-blocking it.
 
 `check` and `doctor` exit `1` on a blocking condition (wrong identity, missing
 identity, or a strict-mode violation) and `0` otherwise. Unknown commands exit `2`.
+
+`check` also exits `1` when it **could not verify** the identity: git is not on
+`PATH`, git fails for a reason other than "not a git repository" (for example
+"dubious ownership"), or the config file is not valid JSON. A guard that cannot
+check must not let the commit through silently. Outside a git repository,
+`check --hook` is still a no-op.
 
 ## How identity is resolved
 

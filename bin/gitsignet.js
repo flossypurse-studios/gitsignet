@@ -9,8 +9,10 @@ const VERSION = createRequire(import.meta.url)('../package.json').version;
 const HELP = `gitsignet — git identity guard
 
 Usage:
-  gitsignet doctor              Diagnose the identity for this repo and remote
-  gitsignet check [--hook]      Guard: exit non-zero if the identity is wrong
+  gitsignet doctor [--json]     Diagnose the identity for this repo and remote
+  gitsignet check [--hook] [--json]
+                                Guard: exit non-zero if the identity is wrong,
+                                or if it could not be verified
   gitsignet fix [--global]      Set git config to the identity this remote expects
   gitsignet install             Install the pre-commit guard in this repo
   gitsignet uninstall           Remove the pre-commit guard from this repo
@@ -41,9 +43,9 @@ function main(argv) {
 
   switch (cmd) {
     case 'doctor':
-      return doctor();
+      return doctor({ json: flags.has('--json') });
     case 'check':
-      return check({ hook: flags.has('--hook') });
+      return check({ hook: flags.has('--hook'), json: flags.has('--json') });
     case 'fix':
       return fix({ global: flags.has('--global') });
     case 'install':
@@ -59,4 +61,12 @@ function main(argv) {
   }
 }
 
-process.exit(main(process.argv));
+// Expected failures (bad config, git unavailable) print one clean line, not a
+// stack. Exit 1 also blocks the commit when this runs as the pre-commit hook.
+try {
+  process.exit(main(process.argv));
+} catch (err) {
+  console.error(`gitsignet: ${err && err.message ? err.message : String(err)}`);
+  if (process.env.GITSIGNET_DEBUG && err && err.stack) console.error(err.stack);
+  process.exit(1);
+}
