@@ -793,3 +793,18 @@ test('check --json / doctor --json: machine-readable result', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('check --hook: "not a repo" is recognised whatever the locale', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gitsignet-norepo-'));
+  // A git that only answers in English when LC_ALL=C, as a translated git would.
+  const bin = fakePath({
+    gitScript: `if [ "$LC_ALL" = C ]; then echo "fatal: not a git repository" >&2; else echo "fatal: Kein Git-Repository" >&2; fi; exit 128`,
+  });
+  try {
+    const r = run(['check', '--hook'], dir, { PATH: bin, LC_ALL: 'de_DE.UTF-8' });
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
