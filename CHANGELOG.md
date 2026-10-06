@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-05
 
 - **`check` fails closed when it cannot verify.** Previously any git error
   (git missing, killed, or refusing the repository) was read as "not a git
