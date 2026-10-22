@@ -26,15 +26,20 @@ are applied for you — no retyping, no copy-paste.
 
 ## Why
 
-`git config includeIf` can switch identity — but it keys off the **directory**
-the repo lives in, it is silent, and it never *stops* a bad commit. Clone a work
-repo into the wrong folder, or forget to set `user.email` in a fresh clone, and
-you will happily author commits as the wrong person. You find out when the commit
-is already pushed with your personal email on a work repo (or your work email on
-an open-source PR).
+`git config includeIf` can *set* your identity automatically — by directory,
+and since git 2.36 by remote URL too (`hasconfig:remote.*.url:...`). What it
+can't do is *block* a commit under the wrong identity. Typo a glob, forget a
+rule, or set `user.email` by hand in a fresh clone, and `includeIf` will not
+stop you from committing. You find out when the commit is already pushed with
+your personal email on a work repo (or your work email on an open-source PR).
 
-`gitsignet` keys rules off the **remote** instead of the directory, and it runs
-as a `pre-commit` hook that **fails the commit** when the identity is wrong.
+Git's own `user.useConfigOnly` refuses to commit with *no* identity configured
+at all — but it has nothing to say about an identity that's configured and
+just wrong for this remote.
+
+`gitsignet` blocks: it runs as a `pre-commit` hook and fails the commit when
+your current identity doesn't match the rule for this repo's remote. `doctor`
+explains why, and `fix` applies the right one.
 
 ## Install
 
