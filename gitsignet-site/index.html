@@ -509,7 +509,7 @@ tbody tr:hover td:first-child { border-left-color: var(--accent); }
     </div>
     <div class="card">
       <h3>Zero-config doctor</h3>
-      <p><code>gitsignet doctor</code> works before any config exists — it explains the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Once a rule exists, <code>gitsignet fix</code> applies the identity that rule expects.</p>
+      <p><code>gitsignet doctor</code> works before any config exists — it shows the identity you're about to commit as and the parsed remote. Once a rule exists, it also names the matching rule and whether you match it, and <code>gitsignet fix</code> applies the identity that rule expects.</p>
     </div>
   </div>
 </section>
@@ -531,7 +531,7 @@ gitsignet init --global
 
 <span class="c-comment"># 3. Turn on the pre-commit guard in a repo</span>
 gitsignet install</pre>
-  <p class="muted">Keep one global config with all your identities and you never think about it again — every repo you clone gets checked against its own remote.</p>
+  <p class="muted">Keep one global config with all your identities and you never think about it again — every repo where you've run <code>gitsignet install</code> gets checked against its own remote.</p>
 </section>
 
 <section id="config">
