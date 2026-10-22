@@ -28,10 +28,10 @@ are applied for you — no retyping, no copy-paste.
 
 `git config includeIf` can *set* your identity automatically — by directory,
 and since git 2.36 by remote URL too (`hasconfig:remote.*.url:...`). What it
-can't do is *block* a commit under the wrong identity. Typo a glob, forget a
-rule, or set `user.email` by hand in a fresh clone, and `includeIf` will not
-stop you from committing. You find out when the commit is already pushed with
-your personal email on a work repo (or your work email on an open-source PR).
+can't do is *block* a commit under the wrong identity. Typo a glob, or set
+`user.email` by hand in a fresh clone, and `includeIf` will not stop you from
+committing. You find out when the commit is already pushed with your personal
+email on a work repo (or your work email on an open-source PR).
 
 Git's own `user.useConfigOnly` refuses to commit with *no* identity configured
 at all — but it has nothing to say about an identity that's configured and

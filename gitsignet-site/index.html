@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>gitsignet — git identity guard</title>
-<meta name="description" content="gitsignet blocks commits made under the wrong author identity — includeIf can set an identity, gitsignet is what stops a wrong one. Zero-config doctor and fix.">
+<meta name="description" content="gitsignet blocks commits made under the wrong author identity — includeIf can set an identity, gitsignet is what stops a wrong one. Zero-config doctor; fix applies the rule's identity.">
 <link rel="canonical" href="https://gitsignet.dev/">
 <meta property="og:title" content="gitsignet — git identity guard">
-<meta property="og:description" content="Block commits made under the wrong author. Zero-config doctor and fix.">
+<meta property="og:description" content="Block commits made under the wrong author. Zero-config doctor; fix applies the rule's identity.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gitsignet.dev/">
 <meta name="theme-color" content="#fbf7f0">
@@ -497,7 +497,7 @@ tbody tr:hover td:first-child { border-left-color: var(--accent); }
   <div class="grid">
     <div class="card">
       <h3>It only sets, never blocks</h3>
-      <p>Typo a glob, forget a rule, or set <code>user.email</code> by hand in a fresh clone, and <code>includeIf</code> will not stop you from committing. gitsignet's pre-commit hook <strong>fails the commit</strong> when the identity is wrong.</p>
+      <p>Typo a glob, or set <code>user.email</code> by hand in a fresh clone, and <code>includeIf</code> will not stop you from committing. gitsignet's pre-commit hook <strong>fails the commit</strong> when the identity is wrong.</p>
     </div>
     <div class="card">
       <h3>It's silent</h3>
@@ -508,8 +508,8 @@ tbody tr:hover td:first-child { border-left-color: var(--accent); }
       <p>Git's own <code>user.useConfigOnly</code> refuses to commit with no identity configured at all — but it says nothing about an identity that IS configured and just wrong for this remote. gitsignet checks against a rule, not just presence.</p>
     </div>
     <div class="card">
-      <h3>Zero-config doctor and fix</h3>
-      <p>Run <code>gitsignet doctor</code> anywhere and it explains the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Run <code>gitsignet fix</code> and it applies the right one — before you've written a single config line.</p>
+      <h3>Zero-config doctor</h3>
+      <p><code>gitsignet doctor</code> works before any config exists — it explains the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK. Once a rule exists, <code>gitsignet fix</code> applies the identity that rule expects.</p>
     </div>
   </div>
 </section>
