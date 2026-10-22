@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>gitsignet — git identity guard</title>
-<meta name="description" content="gitsignet blocks commits made under the wrong author identity, using rules keyed off the repo's remote. Zero-config doctor explains who you're about to commit as, and why.">
+<meta name="description" content="gitsignet blocks commits made under the wrong author identity — includeIf can set an identity, gitsignet is what stops a wrong one. Zero-config doctor; fix applies the rule's identity.">
 <link rel="canonical" href="https://gitsignet.dev/">
 <meta property="og:title" content="gitsignet — git identity guard">
-<meta property="og:description" content="Block commits made under the wrong author. Remote-keyed rules. Zero-config doctor.">
+<meta property="og:description" content="Block commits made under the wrong author. Zero-config doctor; fix applies the rule's identity.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gitsignet.dev/">
 <meta name="theme-color" content="#fbf7f0">
@@ -462,7 +462,7 @@ tbody tr:hover td:first-child { border-left-color: var(--accent); }
     <div class="wrap">
       <p class="eyebrow"><a href="https://flossypurse.studio">A FlossyPurse Studios tool</a></p>
       <h1>Never commit as the <span class="hl">wrong you</span> again.</h1>
-      <p class="lead tagline">A git identity guard that <em>blocks</em> the commit when your author identity doesn't match the repo — with rules keyed off the <strong>remote</strong>, not the directory.</p>
+      <p class="lead tagline">A git identity guard that <em>blocks</em> the commit when your author identity doesn't match the repo. <code class="inline-code">includeIf</code> can set an identity — gitsignet is what stops a wrong one.</p>
       <div class="badges">
         <a href="https://www.npmjs.com/package/gitsignet"><img src="https://img.shields.io/npm/v/gitsignet?color=2b4fe0&label=npm" alt="npm version"></a>
         <a href="https://github.com/flossypurse-studios/gitsignet"><img src="https://img.shields.io/badge/license-MIT-16181d" alt="MIT license"></a>
@@ -493,23 +493,23 @@ tbody tr:hover td:first-child { border-left-color: var(--accent); }
 
 <section id="why">
   <h2>Why <span style="color:var(--fg-mute)">git already has <code class="inline-code">includeIf</code></span></h2>
-  <p><code class="inline-code">git config includeIf</code> can switch identity automatically — but it has three holes that bite you exactly when it matters:</p>
+  <p><code class="inline-code">git config includeIf</code> can set your identity automatically — by directory, and since git 2.36 by remote URL too (<code class="inline-code">hasconfig:remote.*.url:...</code>). What it can't do is stop a commit under the wrong identity.</p>
   <div class="grid">
     <div class="card">
-      <h3>It keys off the directory</h3>
-      <p>Clone a work repo into <code>~/personal/</code> by mistake and <code>includeIf</code> silently picks the wrong identity. gitsignet keys off the <strong>remote URL</strong> — the repo is what it is no matter where it lives on disk.</p>
+      <h3>It only sets, never blocks</h3>
+      <p>Typo a glob, or set <code>user.email</code> by hand in a fresh clone, and <code>includeIf</code> will not stop you from committing. gitsignet's pre-commit hook <strong>fails the commit</strong> when the identity is wrong.</p>
     </div>
     <div class="card">
       <h3>It's silent</h3>
-      <p>You only learn the identity was wrong after the commit is pushed with your personal email on a work repo. gitsignet is loud: <code>doctor</code> tells you up front, and the guard <strong>fails the commit</strong>.</p>
+      <p>You only learn the identity was wrong after the commit is pushed with your personal email on a work repo. gitsignet is loud: <code>doctor</code> tells you up front, and the guard fails the commit.</p>
     </div>
     <div class="card">
-      <h3>It never blocks</h3>
-      <p>A fresh clone with no <code>user.email</code> set will happily author commits. <code>includeIf</code> won't stop it. gitsignet's pre-commit hook exits non-zero on a mismatch or a missing identity.</p>
+      <h3><code>user.useConfigOnly</code> isn't enough</h3>
+      <p>Git's own <code>user.useConfigOnly</code> refuses to commit with no identity configured at all — but it says nothing about an identity that IS configured and just wrong for this remote. gitsignet checks against a rule, not just presence.</p>
     </div>
     <div class="card">
       <h3>Zero-config doctor</h3>
-      <p>Run <code>gitsignet doctor</code> anywhere and it explains the identity you're about to commit as, the parsed remote, the matching rule, and whether it's OK — before you've written a single config line.</p>
+      <p><code>gitsignet doctor</code> works before any config exists — it shows the identity you're about to commit as and the parsed remote. Once a rule exists, it also names the matching rule and whether you match it, and <code>gitsignet fix</code> applies the identity that rule expects.</p>
     </div>
   </div>
 </section>
@@ -531,7 +531,7 @@ gitsignet init --global
 
 <span class="c-comment"># 3. Turn on the pre-commit guard in a repo</span>
 gitsignet install</pre>
-  <p class="muted">Keep one global config with all your identities and you never think about it again — every repo you clone gets checked against its own remote.</p>
+  <p class="muted">Keep one global config with all your identities and you never think about it again — every repo where you've run <code>gitsignet install</code> gets checked against its own remote.</p>
 </section>
 
 <section id="config">
