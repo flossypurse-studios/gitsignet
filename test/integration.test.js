@@ -516,7 +516,7 @@ test('fix: "(none)" rule applies expected identity to a remoteless repo', () => 
 test('no-remote without a "(none)" rule stays inert in non-strict mode', () => {
   const dir = setupRepo({
     name: 'Wrong Person',
-    email: 'wrong@example.com',
+    email: 'wrong@personal.dev',
     config: WORK_CONFIG,
   });
   try {
@@ -686,10 +686,10 @@ test('check: exit 1 when git has no identity at all', () => {
 test('"(none)" rule requires an exact match, not a substring', () => {
   const dir = setupRepo({
     name: 'Right Person',
-    email: 'right@example.com',
+    email: 'right@personal.dev',
     config: {
       strict: false,
-      profiles: { me: { name: 'Right Person', email: 'right@example.com' } },
+      profiles: { me: { name: 'Right Person', email: 'right@personal.dev' } },
       // This rule's remote pattern merely *contains* "none" — it must NOT be
       // treated as the no-remote catch-all, even though the identity here
       // would satisfy it if it were wrongly matched.
@@ -699,7 +699,7 @@ test('"(none)" rule requires an exact match, not a substring', () => {
   try {
     // No real "(none)" rule and no origin remote → status must be "no-remote"
     // (inert, allowed), NOT "ok" via a wrongly-matched "nonematch" rule.
-    const r = run(['doctor'], dir, { GIT_AUTHOR_NAME: 'Right Person', GIT_AUTHOR_EMAIL: 'right@example.com' });
+    const r = run(['doctor'], dir, { GIT_AUTHOR_NAME: 'Right Person', GIT_AUTHOR_EMAIL: 'right@personal.dev' });
     assert.equal(r.code, 0);
     assert.match(r.stdout, /no origin remote/);
     assert.doesNotMatch(r.stdout, /matches the rule/);
@@ -846,5 +846,126 @@ test('check --hook: "not a repo" is recognised whatever the locale', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
     rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+// --- a placeholder identity in a repo with no remote must block ------------
+//
+// With no origin remote, no remote-keyed rule can apply, so a commit used to
+// pass under whatever the global gitconfig held — on a machine whose global
+// identity is a CI placeholder, that is `CI <ci@example.com>`.
+
+test('check --hook: blocks the CI placeholder identity in a repo with no remote', () => {
+  const dir = setupRepo({ name: 'CI', email: 'ci@example.com', config: WORK_CONFIG });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /placeholder identity in a repo with no remote — commit blocked/);
+    assert.match(r.stderr, /CI <ci@example\.com>/);
+    assert.match(r.stderr, /--no-verify/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: doctor and check --json report it and exit 1', () => {
+  const dir = setupRepo({ name: 'CI', email: 'ci@example.com', config: WORK_CONFIG });
+  try {
+    const d = run(['doctor'], dir);
+    assert.equal(d.code, 1);
+    assert.match(d.stdout, /placeholder identity/);
+    const j = run(['check', '--json'], dir);
+    assert.equal(j.code, 1);
+    const out = JSON.parse(j.stdout);
+    assert.equal(out.status, 'placeholder');
+    assert.equal(out.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: an env-var identity is checked too, overriding a good config', () => {
+  const dir = setupRepo({ name: 'Real Person', email: 'me@personal.dev', config: WORK_CONFIG });
+  try {
+    const r = run(['check', '--hook'], dir, { GIT_AUTHOR_NAME: 'Bot', GIT_AUTHOR_EMAIL: 'bot@example.org' });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /placeholder identity/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: every reserved domain blocks; look-alikes do not', () => {
+  const blocked = [
+    'ci@example.com',
+    'ci@EXAMPLE.COM',
+    'ci@build.example.net',
+    'ci@example.org',
+    'me@host.example',
+    'me@nowhere.invalid',
+    'me@runner.test',
+    'me@localhost',
+    'me@box.localhost',
+  ];
+  const allowed = ['me@example.co', 'me@notexample.com', 'me@example.com.au', 'me@testing.dev', 'me@personal.dev'];
+  for (const email of [...blocked, ...allowed]) {
+    const dir = setupRepo({ name: 'Someone', email, config: WORK_CONFIG });
+    try {
+      const r = run(['check', '--hook'], dir);
+      assert.equal(r.code, blocked.includes(email) ? 1 : 0, email);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('placeholder: a "(none)" rule naming that identity explicitly allows it', () => {
+  const dir = setupRepo({
+    name: 'CI',
+    email: 'ci@example.com',
+    config: { rules: [{ remote: '(none)', name: 'CI', email: 'ci@example.com' }] },
+  });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: unchanged where gitsignet already had an answer', () => {
+  // No config at all: gitsignet stays a no-op.
+  const bare = setupRepo({ name: 'CI', email: 'ci@example.com' });
+  // A remote with no matching rule, non-strict: still allowed (unchanged).
+  const remote = setupRepo({
+    remote: 'git@github.com:someone-else/thing.git',
+    name: 'CI',
+    email: 'ci@example.com',
+    config: WORK_CONFIG,
+  });
+  try {
+    assert.equal(run(['check', '--hook'], bare).code, 0);
+    assert.equal(run(['check', '--hook'], remote).code, 0);
+  } finally {
+    rmSync(bare, { recursive: true, force: true });
+    rmSync(remote, { recursive: true, force: true });
+  }
+});
+
+test('a real commit in a repo with no remote is blocked under the CI placeholder', () => {
+  const dir = setupRepo({ name: 'CI', email: 'ci@example.com', config: WORK_CONFIG });
+  try {
+    const hook = join(dir, '.git', 'hooks', 'pre-commit');
+    writeFileSync(hook, `#!/bin/sh\nnode ${BIN} check --hook || exit 1\n`);
+    chmodSync(hook, 0o755);
+    writeFileSync(join(dir, 'file.txt'), 'hello');
+    sh('git', ['add', 'file.txt'], dir);
+    assert.throws(() => sh('git', ['commit', '-m', 'test'], dir));
+
+    sh('git', ['config', 'user.name', 'Real Person'], dir);
+    sh('git', ['config', 'user.email', 'me@personal.dev'], dir);
+    sh('git', ['commit', '-m', 'test'], dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

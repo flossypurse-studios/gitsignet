@@ -98,6 +98,16 @@ have to think about it again.
   all (a local-only repo). This lets you guard the identity of remoteless repos —
   for example `{ "remote": "(none)", "profile": "personal" }` — which no
   host/owner glob can ever match.
+
+  Without a `"(none)"` rule, a repo with no remote still gets one check: a
+  **placeholder identity is blocked**. An email at a domain reserved for
+  examples and testing — `example.com`, `example.net`, `example.org` (and their
+  subdomains), or any `.example`, `.invalid`, `.test` or `.localhost` name — is
+  never a real author; it is what CI images and setup scripts write into a
+  global gitconfig (`CI <ci@example.com>`), and with no remote nothing else
+  would stop it landing in a commit. Set the repo's own `user.name`/`user.email`,
+  or add a `"(none)"` rule (a rule that names the placeholder explicitly allows
+  it). This applies only when a gitsignet config exists.
 - **`strict`** — when `true`, a commit to a remote that matches **no** rule is
   blocked. Off by default (unmatched remotes are allowed).
 
@@ -136,7 +146,8 @@ one-line notice and lets the commit proceed rather than hard-blocking it.
 ## Exit codes
 
 `check` and `doctor` exit `1` on a blocking condition (wrong identity, missing
-identity, or a strict-mode violation) and `0` otherwise. Unknown commands exit `2`.
+identity, a placeholder identity in a repo with no remote, or a strict-mode
+violation) and `0` otherwise. Unknown commands exit `2`.
 
 `check` also exits `1` when it **could not verify** the identity: git is not on
 `PATH`, git fails for a reason other than "not a git repository" (for example
