@@ -106,8 +106,9 @@ have to think about it again.
   never a real author; it is what CI images and setup scripts write into a
   global gitconfig (`CI <ci@example.com>`), and with no remote nothing else
   would stop it landing in a commit. Set the repo's own `user.name`/`user.email`,
-  or add a `"(none)"` rule (a rule that names the placeholder explicitly allows
-  it). This applies only when a gitsignet config exists.
+  or add a `"(none)"` rule, which takes precedence (if it names no `email`, any
+  email passes it). This applies only when a gitsignet config exists and the
+  repo has no `origin` at all; an origin that is a local path counts as a remote.
 - **`strict`** — when `true`, a commit to a remote that matches **no** rule is
   blocked. Off by default (unmatched remotes are allowed).
 

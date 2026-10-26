@@ -572,7 +572,7 @@ gitsignet install</pre>
     { <span class="c-key">"remote"</span>: <span class="c-str">"gitlab.com/**"</span>,        <span class="c-key">"name"</span>: <span class="c-str">"Personal Me"</span>, <span class="c-key">"email"</span>: <span class="c-str">"me@personal.dev"</span> }
   ]
 }</pre>
-  <p class="muted"><code>remote</code> is a glob matched against <code>host/owner/repo</code>, <code>host/owner</code>, and <code>host</code>. <code>*</code> matches within one path segment; <code>**</code> crosses <code>/</code>. Use the literal <code>"(none)"</code> to match a local-only repo that has <strong>no origin remote</strong>. Without one, a remoteless repo still blocks a <strong>placeholder identity</strong> — an email at a reserved example or test domain such as <code>ci@example.com</code>, which no person commits as. With <code>strict: true</code>, a commit to any remote that matches no rule is blocked.</p>
+  <p class="muted"><code>remote</code> is a glob matched against <code>host/owner/repo</code>, <code>host/owner</code>, and <code>host</code>. <code>*</code> matches within one path segment; <code>**</code> crosses <code>/</code>. Use the literal <code>"(none)"</code> to match a local-only repo that has <strong>no origin remote</strong>. Without one, a repo with no origin at all still blocks a <strong>placeholder identity</strong> — an email at a reserved example or test domain such as <code>ci@example.com</code>, which no person commits as. With <code>strict: true</code>, a commit to any remote that matches no rule is blocked.</p>
 </section>
 
 <section id="commands">

@@ -20,8 +20,8 @@ const BIN = join(HERE, '..', 'bin', 'gitsignet.js');
 
 // Every child process runs in a sandbox, not the machine running the suite: an
 // empty HOME and XDG_CONFIG_HOME (so a real ~/.config/gitsignet/config.json is
-// never read), an empty global git config, and a PATH holding only node and git
-// (so a globally installed gitsignet or npx is never found). Without this, the
+// never read), an empty global git config, and a PATH holding only node, git
+// and sh (so a globally installed gitsignet or npx is never found). Without this, the
 // suite fails on any machine where gitsignet is installed and configured.
 const SANDBOX = mkdtempSync(join(tmpdir(), 'gitsignet-env-'));
 const SANDBOX_BIN = join(SANDBOX, 'bin');
@@ -30,6 +30,7 @@ mkdirSync(join(SANDBOX, 'home'));
 mkdirSync(join(SANDBOX, 'xdg'));
 writeFileSync(join(SANDBOX, 'gitconfig'), '');
 symlinkSync(process.execPath, join(SANDBOX_BIN, 'node'));
+symlinkSync('/bin/sh', join(SANDBOX_BIN, 'sh'));
 symlinkSync(
   execFileSync('/bin/sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim(),
   join(SANDBOX_BIN, 'git')
@@ -906,6 +907,9 @@ test('placeholder: every reserved domain blocks; look-alikes do not', () => {
     'me@runner.test',
     'me@localhost',
     'me@box.localhost',
+    'ci@example.com.',
+    '<ci@example.com>',
+    ' ci@example.com ',
   ];
   const allowed = ['me@example.co', 'me@notexample.com', 'me@example.com.au', 'me@testing.dev', 'me@personal.dev'];
   for (const email of [...blocked, ...allowed]) {
@@ -967,5 +971,43 @@ test('a real commit in a repo with no remote is blocked under the CI placeholder
     sh('git', ['commit', '-m', 'test'], dir);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: strict mode with no remote still reports the placeholder', () => {
+  const dir = setupRepo({ name: 'CI', email: 'ci@example.com', config: { ...WORK_CONFIG, strict: true } });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /placeholder identity/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('placeholder: an origin that is a local path is a remote, not "no remote"', () => {
+  const bare = mkdtempSync(join(tmpdir(), 'gitsignet-bare-'));
+  sh('git', ['init', '--bare', '-q'], bare);
+  const dir = setupRepo({ remote: bare, name: 'CI', email: 'ci@example.com', config: WORK_CONFIG });
+  try {
+    const r = run(['check', '--hook'], dir);
+    assert.equal(r.code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bare, { recursive: true, force: true });
+  }
+});
+
+test('install: no fall-open warning when the hook can resolve gitsignet', () => {
+  const dir = setupRepo({ name: 'A', email: 'a@b.c', config: NONE_CONFIG });
+  const bin = mkdtempSync(join(tmpdir(), 'gitsignet-stubbin-'));
+  writeFileSync(join(bin, 'gitsignet'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  try {
+    const r = run(['install'], dir, { PATH: `${bin}:${SANDBOX_BIN}` });
+    assert.equal(r.code, 0);
+    assert.doesNotMatch(r.stderr, /FALL OPEN/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
   }
 });
