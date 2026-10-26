@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.2 — 2026-10-26
+
+- **A placeholder identity is blocked in a repo with no remote.** With no
+  origin remote and no `"(none)"` rule, `check` used to pass whatever identity
+  git had — on a machine whose global gitconfig holds a CI placeholder such as
+  `CI <ci@example.com>`, the commit went through under it. Now an email at a
+  domain reserved for examples and testing (`example.com`/`.net`/`.org` and
+  their subdomains; `.example`, `.invalid`, `.test`, `.localhost`) blocks the
+  commit there, with the fix in the message. `doctor` reports it and exits `1`;
+  `--json` reports status `placeholder`. A `"(none)"` rule takes precedence
+  (one that names no `email` lets any email pass). Only applies when a config
+  exists and the repo has no `origin` at all; an origin that is a local path
+  or `file://` URL is a remote and is unchanged. **This can block a commit that
+  0.2.1 let through** — which is the point; `git commit --no-verify` bypasses
+  it once.
+- **The test suite is hermetic** (#9). Every spawned process gets an empty
+  `HOME`, `XDG_CONFIG_HOME` and global gitconfig and a `PATH` holding only
+  `node`, `git` and `sh`, so the suite no longer fails on a machine where gitsignet
+  is installed and configured.
+- The publish workflow runs `packproof` on the tarball before `npm publish`,
+  in a separate job without publish rights.
+
+## 0.2.1 — 2026-10-22
+
+- README and site corrections: the `includeIf` comparison now says plainly
+  that git can *set* an identity by remote but cannot *block* a wrong one (#8).
+- The publish workflow pins its actions to commit SHAs and npm to an exact
+  version (#7).
+
 ## 0.2.0 — 2026-10-05
 
 - **`check` fails closed when it cannot verify.** Previously any git error
