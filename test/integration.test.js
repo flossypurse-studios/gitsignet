@@ -1,7 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  symlinkSync,
+  chmodSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,8 +18,39 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BIN = join(HERE, '..', 'bin', 'gitsignet.js');
 
+// Every child process runs in a sandbox, not the machine running the suite: an
+// empty HOME and XDG_CONFIG_HOME (so a real ~/.config/gitsignet/config.json is
+// never read), an empty global git config, and a PATH holding only node and git
+// (so a globally installed gitsignet or npx is never found). Without this, the
+// suite fails on any machine where gitsignet is installed and configured.
+const SANDBOX = mkdtempSync(join(tmpdir(), 'gitsignet-env-'));
+const SANDBOX_BIN = join(SANDBOX, 'bin');
+mkdirSync(SANDBOX_BIN);
+mkdirSync(join(SANDBOX, 'home'));
+mkdirSync(join(SANDBOX, 'xdg'));
+writeFileSync(join(SANDBOX, 'gitconfig'), '');
+symlinkSync(process.execPath, join(SANDBOX_BIN, 'node'));
+symlinkSync(
+  execFileSync('/bin/sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim(),
+  join(SANDBOX_BIN, 'git')
+);
+process.on('exit', () => rmSync(SANDBOX, { recursive: true, force: true }));
+
+const ENV = { ...process.env };
+for (const key of Object.keys(ENV)) {
+  if (key.startsWith('GIT_') || key.startsWith('GITSIGNET_')) delete ENV[key];
+}
+Object.assign(ENV, {
+  HOME: join(SANDBOX, 'home'),
+  XDG_CONFIG_HOME: join(SANDBOX, 'xdg'),
+  GIT_CONFIG_GLOBAL: join(SANDBOX, 'gitconfig'),
+  GIT_CONFIG_NOSYSTEM: '1',
+  PATH: SANDBOX_BIN,
+  NO_COLOR: '1',
+});
+
 function sh(cmd, args, cwd) {
-  return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return execFileSync(cmd, args, { cwd, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
 // Run the CLI, returning { code, stdout, stderr }. Never throws on non-zero exit.
@@ -18,7 +58,7 @@ function run(args, cwd, env = {}) {
   const r = spawnSync('node', [BIN, ...args], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1', ...env },
+    env: { ...ENV, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   return { code: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
@@ -299,7 +339,7 @@ test('a real commit is blocked by the installed hook', () => {
     // Rewrite the hook to call our bin directly (global gitsignet isn't installed in CI).
     const hook = join(dir, '.git', 'hooks', 'pre-commit');
     writeFileSync(hook, `#!/bin/sh\nnode ${BIN} check --hook || exit 1\n`);
-    sh('chmod', ['+x', hook], dir);
+    chmodSync(hook, 0o755);
 
     writeFileSync(join(dir, 'file.txt'), 'hello');
     sh('git', ['add', '.'], dir);
@@ -309,7 +349,7 @@ test('a real commit is blocked by the installed hook', () => {
         cwd: dir,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, NO_COLOR: '1' },
+        env: ENV,
       });
     } catch {
       blocked = true;
